@@ -12,6 +12,9 @@ public class Player : MonoBehaviour
 
     [SerializeField]
     private GameObject _explosionPrefab;
+    
+    [SerializeField]
+    private float _speed;
 
     private void Awake()
     {
@@ -47,12 +50,54 @@ public class Player : MonoBehaviour
 
     private void Update()
     {
-        if(canShoot && Input.GetMouseButtonDown(0))
+        if (canShoot && Input.GetMouseButtonDown(0))
         {
             isSlow = !isSlow;
             speedMultiplier = isSlow ? _slowMoveSpeedMultiplier : _fastMoveSpeedMultiplier;
             rotateSpeedMultiplier = isSlow ? _slowRotateSpeedMultiplier : _fastMoveSpeedMultiplier;
             AudioManager.Instance.PlaySound(_moveClip);
+        }
+
+        if (canMove)
+        {
+            if (Input.GetMouseButton(0))
+            {
+                Vector3 mousePosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+                mousePosition.z = 0; // Ensure the z position is 0 since we're in 2D
+                transform.position = Vector3.Lerp(transform.position, mousePosition, Time.deltaTime * _speed);
+                // Rotate back to prepare for hitting
+                transform.rotation = Quaternion.Lerp(transform.rotation, Quaternion.Euler(0, 0, -45f), Time.deltaTime * _rotateSpeed);
+                _isStriking = false;
+            }
+            else if (Input.GetMouseButtonUp(0))
+            {
+                _strikeTime = 0f;
+                _isStriking = true;
+            }
+
+            if (_isStriking)
+            {
+                _strikeTime += Time.deltaTime;
+                float t = _strikeTime / _strikeDuration;
+
+                if (t <= 0.5f)
+                {
+                    // Rotate forward to 45 degrees
+                    transform.rotation = Quaternion.Euler(0, 0, Mathf.Lerp(-45f, 45f, t * 2));
+                }
+                else
+                {
+                    // Rotate back to 0 degrees
+                    transform.rotation = Quaternion.Euler(0, 0, Mathf.Lerp(45f, 0f, (t - 0.5f) * 2));
+                }
+
+                Debug.Log("Rotate: " + transform.rotation.eulerAngles);
+
+                if (t >= 1f)
+                {
+                    _isStriking = false;
+                }
+            }
         }
     }
 
@@ -71,27 +116,32 @@ public class Player : MonoBehaviour
     private float rotateMagnitude;
     private float rotateSpeedMultiplier;
 
+    [SerializeField] private AnimationCurve _strikeCurve;
+    [SerializeField] private float _strikeDuration = 0.2f;
+    private float _strikeTime;
+    private bool _isStriking;
+
     private void FixedUpdate()
     {
-        if (!canMove) return;
+        //if (!canMove) return;
 
-        transform.position += (speedMagnitude * speedMultiplier * _startSpeed * Time.fixedDeltaTime *Vector3.right);
+        //transform.position += (speedMagnitude * speedMultiplier * _startSpeed * Time.fixedDeltaTime *Vector3.right);
 
-        currentRotateValue += (rotateMagnitude * rotateSpeedMultiplier * _rotateSpeed * Time.fixedDeltaTime);
+        //currentRotateValue += (rotateMagnitude * rotateSpeedMultiplier * _rotateSpeed * Time.fixedDeltaTime);
 
-        transform.rotation = Quaternion.Euler(0,0,currentRotateValue);
+        //transform.rotation = Quaternion.Euler(0,0,currentRotateValue);
 
-        if(transform.position.x < -_boundsX || transform.position.x  > _boundsX)
-        {
-            speedMagnitude *= -1f;
+        //if(transform.position.x < -_boundsX || transform.position.x  > _boundsX)
+        //{
+        //    speedMagnitude *= -1f;
 
-            AudioManager.Instance.PlaySound(_pointClip);
+        //    AudioManager.Instance.PlaySound(_pointClip);
 
-            if(currentRotateValue > 360f || currentRotateValue < 0f)
-            {
-                rotateMagnitude *= -1f;
-            }
-        }
+        //    if(currentRotateValue > 360f || currentRotateValue < 0f)
+        //    {
+        //        rotateMagnitude *= -1f;
+        //    }
+        //}
     }
 
     private void OnTriggerEnter2D(Collider2D collision)
