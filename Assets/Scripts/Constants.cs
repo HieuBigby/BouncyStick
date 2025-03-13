@@ -12,5 +12,7 @@ namespace Constants
     {
         public const string SCORE = "Score";
         public const string OBSTACLE = "Obstacle";
+        public const string WALL = "Wall";
+        public const string BALL = "Ball";
     }
 }

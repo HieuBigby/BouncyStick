@@ -7,7 +7,7 @@ public class Player : MonoBehaviour
     private bool canMove;
 
     [SerializeField]
-    private AudioClip _moveClip, _pointClip, _scoreClip, _loseClip;
+    private AudioClip _pointClip, _scoreClip, _loseClip;
 
     [SerializeField]
     private GameObject _explosionPrefab;
@@ -86,7 +86,7 @@ public class Player : MonoBehaviour
 
     private void OnCollisionEnter2D(Collision2D collision)
     {
-        if (collision.gameObject.CompareTag("Ball"))
+        if (collision.gameObject.CompareTag(Constants.Tags.BALL))
         {
             Vector2 ballPosition = _transBall.position;
             Vector2 forceDirection = ((Vector2)_previousBallPosition - ballPosition).normalized;
@@ -95,7 +95,15 @@ public class Player : MonoBehaviour
             float forceMagnitude = _ballVelocity.magnitude * _force;
             _rigidbody2D.AddForce(forceDirection * forceMagnitude, ForceMode2D.Impulse);
 
+            AudioManager.Instance.PlaySound(_pointClip);
+
             //Debug.Log("Add force to ball in direction: " + forceDirection + " with magnitude: " + forceMagnitude);
+        }
+
+
+        if (collision.gameObject.CompareTag(Constants.Tags.WALL))
+        {
+            AudioManager.Instance.PlaySound(_pointClip);
         }
     }
 
