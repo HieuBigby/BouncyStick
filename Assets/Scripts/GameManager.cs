@@ -50,7 +50,7 @@ public class GameManager : MonoBehaviour
 
     private void Start()
     {
-        AudioManager.Instance.AddButtonSound();
+        //AudioManager.Instance.AddButtonSound();
 
         StartCoroutine(IStartGame());
     }

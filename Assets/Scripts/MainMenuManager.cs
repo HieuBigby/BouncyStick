@@ -19,6 +19,7 @@ public class MainMenuManager : MonoBehaviour
         _soundImage.sprite = sound ? _activeSoundSprite : _inactiveSoundSprite;
 
         AudioManager.Instance.AddButtonSound();
+        Application.targetFrameRate = 60;
     }
 
     public void ClickedPlay()

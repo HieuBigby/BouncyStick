@@ -5,7 +5,6 @@ using System.Collections;
 public class Player : MonoBehaviour
 { 
     private bool canMove;
-    private bool canShoot;
 
     [SerializeField]
     private AudioClip _moveClip, _pointClip, _scoreClip, _loseClip;
@@ -18,8 +17,9 @@ public class Player : MonoBehaviour
 
     private void Awake()
     {
-        canShoot = false;
         canMove = false;
+        _rigidbody2D = GetComponent<Rigidbody2D>();
+        _ballRigidbody2D = _transBall.GetComponent<Rigidbody2D>();
     }
 
     private void OnEnable()
@@ -37,112 +37,75 @@ public class Player : MonoBehaviour
     private void GameStarted()
     {
         canMove = true;
-        canShoot = true;
-
-        isSlow = true;
-        speedMagnitude = 1f;
-        speedMultiplier = _slowMoveSpeedMultiplier;
-
-        currentRotateValue = 0f;
-        rotateMagnitude = 1f;
-        rotateSpeedMultiplier = _slowRotateSpeedMultiplier;
     }
 
     private void Update()
     {
-        if (canShoot && Input.GetMouseButtonDown(0))
-        {
-            isSlow = !isSlow;
-            speedMultiplier = isSlow ? _slowMoveSpeedMultiplier : _fastMoveSpeedMultiplier;
-            rotateSpeedMultiplier = isSlow ? _slowRotateSpeedMultiplier : _fastMoveSpeedMultiplier;
-            AudioManager.Instance.PlaySound(_moveClip);
-        }
-
         if (canMove)
         {
+            if (Input.GetMouseButtonDown(0))
+            {
+                Vector3 mousePosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+                mousePosition.z = 0; // Ensure the z position is 0 since we're in 2D
+
+                // Move the ball to the mouse position immediately
+                _transBall.position = mousePosition;
+
+                // Update the previous ball position
+                _previousBallPosition = _transBall.position;
+            }
+
             if (Input.GetMouseButton(0))
             {
                 Vector3 mousePosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
                 mousePosition.z = 0; // Ensure the z position is 0 since we're in 2D
-                transform.position = Vector3.Lerp(transform.position, mousePosition, Time.deltaTime * _speed);
-                // Rotate back to prepare for hitting
-                transform.rotation = Quaternion.Lerp(transform.rotation, Quaternion.Euler(0, 0, -45f), Time.deltaTime * _rotateSpeed);
-                _isStriking = false;
-            }
-            else if (Input.GetMouseButtonUp(0))
-            {
-                _strikeTime = 0f;
-                _isStriking = true;
+
+                // Move the ball using Rigidbody2D
+                _ballRigidbody2D.MovePosition(mousePosition);
+
+                // Calculate ball velocity
+                _ballVelocity = (_transBall.position - _previousBallPosition) / Time.deltaTime;
+                _previousBallPosition = _transBall.position;
             }
 
-            if (_isStriking)
+            // Check if the stick goes out of the screen
+            if (transform.position.y < Camera.main.ScreenToWorldPoint(new Vector3(0, 0, 0)).y)
             {
-                _strikeTime += Time.deltaTime;
-                float t = _strikeTime / _strikeDuration;
-
-                if (t <= 0.5f)
-                {
-                    // Rotate forward to 45 degrees
-                    transform.rotation = Quaternion.Euler(0, 0, Mathf.Lerp(-45f, 45f, t * 2));
-                }
-                else
-                {
-                    // Rotate back to 0 degrees
-                    transform.rotation = Quaternion.Euler(0, 0, Mathf.Lerp(45f, 0f, (t - 0.5f) * 2));
-                }
-
-                Debug.Log("Rotate: " + transform.rotation.eulerAngles);
-
-                if (t >= 1f)
-                {
-                    _isStriking = false;
-                }
+                EndGame();
             }
         }
     }
 
-    [SerializeField] private float _startSpeed;
-    [SerializeField] private float _boundsX;
-    [SerializeField] private float _fastMoveSpeedMultiplier, _slowMoveSpeedMultiplier;
-
-    private float speedMagnitude;
-    private float speedMultiplier;
-    private bool isSlow;
-
-    [SerializeField] private float _rotateSpeed;
-    [SerializeField] private float _fastRotateSpeedMultiplier, _slowRotateSpeedMultiplier;
-
-    private float currentRotateValue;
-    private float rotateMagnitude;
-    private float rotateSpeedMultiplier;
-
-    [SerializeField] private AnimationCurve _strikeCurve;
-    [SerializeField] private float _strikeDuration = 0.2f;
-    private float _strikeTime;
-    private bool _isStriking;
-
-    private void FixedUpdate()
+    private void EndGame()
     {
-        //if (!canMove) return;
-
-        //transform.position += (speedMagnitude * speedMultiplier * _startSpeed * Time.fixedDeltaTime *Vector3.right);
-
-        //currentRotateValue += (rotateMagnitude * rotateSpeedMultiplier * _rotateSpeed * Time.fixedDeltaTime);
-
-        //transform.rotation = Quaternion.Euler(0,0,currentRotateValue);
-
-        //if(transform.position.x < -_boundsX || transform.position.x  > _boundsX)
-        //{
-        //    speedMagnitude *= -1f;
-
-        //    AudioManager.Instance.PlaySound(_pointClip);
-
-        //    if(currentRotateValue > 360f || currentRotateValue < 0f)
-        //    {
-        //        rotateMagnitude *= -1f;
-        //    }
-        //}
+        Destroy(Instantiate(_explosionPrefab, transform.position, Quaternion.identity), 3f);
+        AudioManager.Instance.PlaySound(_loseClip);
+        GameManager.Instance.EndGame();
+        Destroy(gameObject);
     }
+
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        if (collision.gameObject.CompareTag("Ball"))
+        {
+            Vector2 ballPosition = _transBall.position;
+            Vector2 forceDirection = ((Vector2)_previousBallPosition - ballPosition).normalized;
+
+            // Use ball velocity to determine the force magnitude
+            float forceMagnitude = _ballVelocity.magnitude * _force;
+            _rigidbody2D.AddForce(forceDirection * forceMagnitude, ForceMode2D.Impulse);
+
+            //Debug.Log("Add force to ball in direction: " + forceDirection + " with magnitude: " + forceMagnitude);
+        }
+    }
+
+    [SerializeField] private float _force = 1f;
+    [SerializeField] private Transform _transBall;
+    private Vector3 _previousBallPosition;
+    private Vector3 _ballVelocity;
+
+    private Rigidbody2D _rigidbody2D;
+    private Rigidbody2D _ballRigidbody2D;
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
@@ -155,10 +118,7 @@ public class Player : MonoBehaviour
 
         if(collision.CompareTag(Constants.Tags.OBSTACLE))
         {
-            Destroy(Instantiate(_explosionPrefab,transform.position,Quaternion.identity), 3f);
-            AudioManager.Instance.PlaySound(_loseClip);
-            GameManager.Instance.EndGame();
-            Destroy(gameObject);
+            EndGame();
         }
     }
 
