@@ -107,7 +107,7 @@ public class ScreenEdgeAligner : MonoBehaviour
 
         // Position the top sprite
         topSprite.transform.position = new Vector3(0, topLeft.y, 0);
-        topSprite.size = new Vector2(bottomRight.x * 2, topSprite.size.y); // Adjust width to match screen width
+        topSprite.size = new Vector2(topSprite.size.x, bottomRight.x * 2); // Adjust width to match screen width
 
         // Position the left sprite
         leftSprite.transform.position = new Vector3(topLeft.x, 0, 0);
